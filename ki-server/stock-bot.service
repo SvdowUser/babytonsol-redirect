@@ -1,0 +1,16 @@
+[Unit]
+Description=Stock-Automat (lokale KI erzeugt Stockfotos fuer Adobe Stock)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__DIR__
+ExecStart=__DIR__/venv/bin/python __DIR__/stock_bot.py
+Restart=always
+RestartSec=60
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
