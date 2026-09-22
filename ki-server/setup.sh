@@ -25,7 +25,9 @@ if ! command -v ollama >/dev/null; then
 fi
 sudo systemctl enable --now ollama
 MODEL="$(grep -E '^OLLAMA_MODEL=' "$DIR/config.env" 2>/dev/null | cut -d= -f2)"
+VISION="$(grep -E '^VISION_MODEL=' "$DIR/config.env" 2>/dev/null | cut -d= -f2)"
 ollama pull "${MODEL:-qwen2.5:3b}"
+ollama pull "${VISION:-qwen2.5vl:3b}"   # Bild-Gutachter für die Qualitätskontrolle
 
 echo "==> Python-Umgebung mit Bild-KI installieren (dauert ein paar Minuten)"
 python3 -m venv "$DIR/venv"
@@ -47,4 +49,5 @@ echo
 echo "Fertig! Der Automat läuft jetzt."
 echo "  Live zuschauen:     journalctl -u stock-bot -f"
 echo "  Fertige Bilder:     $DIR/data/pending/"
+echo "  Aussortiert:        $DIR/data/rejected/"
 echo "  Einstellungen:      nano $DIR/config.env   (danach: sudo systemctl restart stock-bot)"

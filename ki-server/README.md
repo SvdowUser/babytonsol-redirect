@@ -10,10 +10,20 @@ realistisch. Pro Verkauf bekommst du ca. 0,30–1 €.
 
 ## Was automatisch läuft
 
-1. Text-KI (Ollama, `qwen2.5:3b`) denkt sich ein gefragtes Motiv aus + Titel + Stichwörter
-2. Bild-KI (Stable Diffusion XL, kommerzielle Nutzung erlaubt) malt das Bild auf der CPU (ein paar Minuten pro Bild)
-3. Hochskalieren auf über 4 Megapixel (Adobe-Mindestgröße)
-4. Titel und Stichwörter werden in die Bilddatei geschrieben
+1. **Themenauswahl wie ein Profi:** Die Text-KI (Ollama, `qwen2.5:3b`) wählt aus Themen mit
+   echter Nachfrage (Business, Essen, Finanzen, Technik, Hintergründe mit Platz für Text …) und
+   überlegt, *wer* das Bild kaufen würde und *wonach* diese Leute suchen. Etwa ein Drittel der
+   Bilder sind **saisonal** und entstehen 2–3 Monate vor dem Anlass (Weihnachten ab September usw.).
+2. Die Bild-KI (Stable Diffusion XL, kommerzielle Nutzung erlaubt) malt pro Motiv **3 Varianten**
+   auf der CPU, ein paar Minuten pro Bild.
+3. **Qualitätskontrolle**, jede Variante muss alle Prüfungen bestehen:
+   - **Schönheit:** LAION-Ästhetikmodell, Bewertung 1–10
+   - **Passt zum Titel:** CLIP vergleicht Bild und Beschreibung
+   - **Kein Duplikat:** nicht zu ähnlich zu früheren Bildern
+   - **Bild-KI-Gutachter** (`qwen2.5vl:3b`) schaut sich das Bild an und sucht Fehler: verzerrte
+     Gegenstände, kaputte Hände, Schrift, Logos, Unschärfe. Er bewertet technische Qualität und Verkaufswert.
+   - Nur die **beste bestandene Variante** wird behalten. Ist keine gut genug, wird das Motiv verworfen.
+4. Hochskalieren auf über 4 Megapixel (Adobe-Mindestgröße); Titel und Stichwörter werden in die Bilddatei geschrieben
 5. Upload per SFTP zu Adobe Stock
 6. Optional: Telegram-Nachricht, wenn Bilder bereitliegen
 
@@ -54,7 +64,9 @@ Beim ersten Start lädt er das Bildmodell (~7 GB), das dauert etwas.
 
 ## Schritt 3: Testbilder anschauen
 
-Nach ein paar Stunden liegen Bilder in `ki-server/data/pending/`. Auf deinen PC holen:
+Nach ein paar Stunden liegen gute Bilder in `ki-server/data/pending/`. Aussortierte landen in
+`ki-server/data/rejected/` (die letzten 60 werden aufgehoben). Im Protokoll siehst du für jede
+Variante die Punkte und warum sie abgelehnt wurde. Auf deinen PC holen:
 ```
 scp -i pfad/zum/schluessel.key "ubuntu@<IP>:babytonsol-redirect/ki-server/data/pending/*.jpg" .
 ```
@@ -81,7 +93,11 @@ Nachricht schicken, dann `https://api.telegram.org/bot<TOKEN>/getUpdates` im Bro
 
 ## Wichtig
 
-- **Qualität vor Masse.** Standard sind 15 Bilder pro Tag. Nicht stark erhöhen, Adobe lehnt
+- **Strenge einstellen:** In `config.env` stehen die Mindestwerte (`MIN_AESTHETIC` usw.).
+  Werden zu viele gute Bilder aussortiert, Werte etwas senken; kommen schlechte durch, erhöhen.
+- **Die Prüfung ist gut, aber nicht perfekt.** Beim wöchentlichen Einreichen kurz drüberschauen
+  und misslungene Bilder löschen.
+- **Qualität vor Masse.** Standard sind 15 gute Bilder pro Tag. Nicht stark erhöhen, Adobe lehnt
   Massenware ab und kann Konten sperren.
 - **Einnahmen versteuern.** Sobald Geld reinkommt, ist das Einkommen.
 - **Server nicht leer laufen lassen:** Oracle kann Gratis-Server zurückfordern, die 7 Tage kaum

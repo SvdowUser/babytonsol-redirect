@@ -2,9 +2,10 @@
 """Stock-Automat: erzeugt Stockfotos mit lokaler KI und lädt sie zu Adobe Stock hoch.
 
 Ablauf pro Durchgang:
-  1. Text-KI (Ollama) denkt sich ein gefragtes Motiv aus -> Prompt, Titel, Stichwörter
-  2. Bild-KI (Stable Diffusion XL, lokal auf der CPU) erzeugt das Bild
-  3. Bild wird auf >= 4 Megapixel hochskaliert (Adobe-Mindestgröße)
+  1. Text-KI (Ollama) denkt sich ein gefragtes Motiv aus (Käuferzweck, Saison) -> Prompt, Titel, Stichwörter
+  2. Bild-KI (Stable Diffusion XL, lokal auf der CPU) erzeugt mehrere Varianten
+  3. Qualitätskontrolle (quality.py) bewertet jede Variante, nur die beste gute wird behalten,
+     und auf >= 4 Megapixel hochskaliert (Adobe-Mindestgröße)
   4. Titel + Stichwörter werden in die JPG-Datei geschrieben (IPTC/XMP)
   5. Upload per SFTP zu Adobe Stock
 
@@ -26,20 +27,48 @@ BASE = Path(__file__).resolve().parent
 DATA = BASE / "data"
 PENDING = DATA / "pending"
 UPLOADED = DATA / "uploaded"
+REJECTED = DATA / "rejected"
+MODELS = DATA / "models"
 STATE_FILE = DATA / "state.json"
 
 log = logging.getLogger("stock-bot")
 
-# Themen, die auf Stock-Plattformen gut laufen und die SDXL zuverlässig kann
-# (keine Gesichter/Hände im Vordergrund, keine Marken).
+# Themen mit echter Nachfrage: Wofür kaufen Firmen, Designer und Blogger Stockfotos?
+# (keine Gesichter/Hände im Vordergrund, keine Marken – das kann die KI am zuverlässigsten)
 THEMES = [
-    "food and drinks", "healthy food flat lay", "abstract backgrounds", "textures and patterns",
-    "nature landscapes", "flowers and plants", "home interior", "office workspace without people",
-    "technology concepts", "business concepts with objects", "seasonal holidays decorations",
-    "travel destinations without people", "animals and pets", "science and medicine objects",
-    "sustainability and environment", "architecture", "sports equipment", "minimalist still life",
-    "copy space backgrounds", "finance and money concepts",
+    ("healthy food", "food blogs, restaurant menus, nutrition articles"),
+    ("breakfast and coffee", "cafe websites, lifestyle blogs, social media posts"),
+    ("business concept with objects", "corporate presentations, finance articles, LinkedIn posts"),
+    ("finance and saving money concept", "bank ads, personal finance blogs, tax season articles"),
+    ("modern home office workspace, no people", "remote work articles, software ads, blog headers"),
+    ("technology and cybersecurity concept", "IT company websites, tech news, security articles"),
+    ("sustainability and renewable energy", "green company reports, climate articles, eco products"),
+    ("wellness, spa and self care still life", "spa websites, beauty blogs, wellness apps"),
+    ("medicine and healthcare objects", "pharmacy ads, clinic websites, health articles"),
+    ("scenic nature landscape", "travel agencies, calendars, desktop wallpapers"),
+    ("travel destination scenery without people", "travel blogs, hotel ads, tourism brochures"),
+    ("cozy modern home interior", "real estate listings, furniture shops, interior blogs"),
+    ("flowers and plants close-up", "florist shops, greeting cards, garden blogs"),
+    ("cute pets and animals", "pet food ads, veterinary websites, pet blogs"),
+    ("minimalist background with copy space", "ads and banners where text is placed on top"),
+    ("elegant abstract background or texture", "website backgrounds, presentations, packaging"),
+    ("education and school supplies", "school websites, e-learning platforms, back to school ads"),
+    ("fitness and sports equipment", "gym websites, fitness apps, sports shops"),
+    ("architecture and modern buildings", "real estate, construction companies, city guides"),
+    ("drinks and cocktails", "bar menus, beverage ads, party invitations"),
 ]
+
+# Saisonale Bilder verkaufen sich am besten, wenn sie 2-3 Monate VOR dem Anlass online sind.
+SEASONAL = {
+    1: ["Valentine's Day", "Easter", "spring"], 2: ["Easter", "spring", "Mother's Day"],
+    3: ["Mother's Day", "summer", "Easter"], 4: ["summer holidays", "Father's Day", "summer"],
+    5: ["summer", "back to school", "summer vacation"], 6: ["back to school", "autumn", "Halloween"],
+    7: ["autumn", "Halloween", "back to school"], 8: ["Halloween", "Thanksgiving", "autumn"],
+    9: ["Halloween", "Thanksgiving", "Christmas", "Black Friday"],
+    10: ["Christmas", "Black Friday", "New Year", "winter"],
+    11: ["Christmas", "New Year", "winter", "Valentine's Day"],
+    12: ["Valentine's Day", "winter", "New Year", "spring"],
+}
 
 # Adobe-Stock-Kategorien (Nummern laut Adobe-CSV-Format)
 CATEGORIES = {
@@ -49,6 +78,9 @@ CATEGORIES = {
     13: "People", 14: "Plants and Flowers", 15: "Culture and Religion", 16: "Science",
     17: "Social Issues", 18: "Sports", 19: "Technology", 20: "Transport", 21: "Travel",
 }
+
+STYLE_SUFFIX = (", professional stock photography, high-end commercial photo, sharp focus, "
+                "highly detailed, natural realistic lighting, clean composition, 8k")
 
 NEGATIVE_PROMPT = (
     "text, watermark, logo, signature, letters, words, brand, trademark, blurry, lowres, "
@@ -69,6 +101,12 @@ def load_config():
         "SD_MODEL": "stabilityai/stable-diffusion-xl-base-1.0",
         "SD_STEPS": "25",
         "IMAGES_PER_DAY": "15",
+        "VARIANTS": "3",
+        "VISION_MODEL": "qwen2.5vl:3b",
+        "MIN_AESTHETIC": "5.0",
+        "MIN_CLIP_MATCH": "22",
+        "MIN_TECH_SCORE": "7",
+        "MIN_COMMERCIAL_SCORE": "6",
         "UPLOAD_ENABLED": "false",
         "ADOBE_SFTP_HOST": "sftp.contributor.adobestock.com",
         "ADOBE_SFTP_USER": "",
@@ -84,6 +122,7 @@ def load_config():
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, value = line.split("=", 1)
+            value = value.split(" #", 1)[0]  # Kommentar hinter dem Wert entfernen
             cfg[key.strip()] = value.strip().strip('"').strip("'")
     for key in cfg:
         if key in os.environ:
@@ -94,7 +133,7 @@ def load_config():
 def load_state():
     if STATE_FILE.exists():
         return json.loads(STATE_FILE.read_text(encoding="utf-8"))
-    return {"day": "", "made_today": 0, "recent_titles": [], "uploaded_total": 0,
+    return {"day": "", "made_today": 0, "tries_today": 0, "rejected_total": 0, "recent_titles": [], "uploaded_total": 0,
             "uploaded_since_notify": 0}
 
 
@@ -134,16 +173,23 @@ def clean_keywords(raw):
 
 
 def make_idea(cfg, state):
-    theme = random.choice(THEMES)
+    if random.random() < 0.35:
+        occasion = random.choice(SEASONAL[date.today().month])
+        theme, buyers = f"{occasion} themed still life or decoration", f"{occasion} ads, shops and social media"
+    else:
+        theme, buyers = random.choice(THEMES)
     recent = "; ".join(state["recent_titles"][-40:]) or "none"
-    prompt = f"""You are an expert Adobe Stock contributor. Invent ONE commercially useful stock photo
-in the theme "{theme}" that designers, bloggers and marketers often search for.
+    prompt = f"""You are a top-selling Adobe Stock contributor who knows exactly what buyers search for.
+Invent ONE best-selling stock photo in the theme "{theme}".
+Typical buyers: {buyers}. Think about what they would type into the search box and what
+image they would actually license. Prefer clean compositions, a clear main subject and
+some empty copy space where a designer can place text.
 It must NOT show brands, logos, text, famous people or copyrighted characters.
 Avoid people's faces and hands in close-up. It must be clearly different from these recent ones: {recent}
 
 Answer ONLY with JSON in exactly this form:
 {{
-  "prompt": "detailed English prompt for a photorealistic image generator (subject, setting, lighting, camera, composition, 'professional stock photography')",
+  "prompt": "detailed English prompt for a photorealistic image generator: main subject, setting, colors, lighting, camera and lens, composition, copy space",
   "title": "descriptive English title, 5-15 words, no brand names",
   "keywords": ["30 to 45 relevant English single words or short phrases, most important first"],
   "category": <number 1-21 from this list: {json.dumps(CATEGORIES)}>
@@ -189,7 +235,7 @@ def make_image(cfg, idea):
     pipe = get_pipeline(cfg)
     width, height = random.choice([(1024, 1024), (1216, 832), (832, 1216), (1152, 896)])
     image = pipe(
-        prompt=idea["prompt"],
+        prompt=idea["prompt"] + STYLE_SUFFIX,
         negative_prompt=NEGATIVE_PROMPT,
         num_inference_steps=int(cfg["SD_STEPS"]),
         guidance_scale=7.0,
@@ -284,28 +330,68 @@ def notify(cfg, text):
 
 # --------------------------------------------------------------------------- Hauptschleife
 
+_checker = None
+
+
+def get_checker(cfg):
+    global _checker
+    if _checker is None:
+        from quality import QualityChecker
+        _checker = QualityChecker(cfg, MODELS, DATA / "clip_memory.pt")
+    return _checker
+
+
+def cleanup_rejected(keep=60):
+    """Nur die letzten abgelehnten Bilder zum Nachschauen aufheben."""
+    old = sorted(REJECTED.glob("*.jpg"))[:-keep]
+    for f in old:
+        f.unlink()
+
+
 def one_round(cfg, state):
     today = date.today().isoformat()
     if state["day"] != today:
-        state["day"], state["made_today"] = today, 0
+        state.update(day=today, made_today=0, tries_today=0)
         save_state(state)
 
-    if state["made_today"] >= int(cfg["IMAGES_PER_DAY"]):
+    per_day = int(cfg["IMAGES_PER_DAY"])
+    if state["made_today"] >= per_day or state.get("tries_today", 0) >= per_day * 4:
         return False
 
     idea = make_idea(cfg, state)
     if not idea:
         return False
+    state["tries_today"] = state.get("tries_today", 0) + 1
     log.info("Neues Motiv: %s", idea["title"])
 
-    started = time.time()
-    image = make_image(cfg, idea)
+    checker = get_checker(cfg)
+    best = None
+    for v in range(int(cfg["VARIANTS"])):
+        started = time.time()
+        image = make_image(cfg, idea)
+        ok, score, details, emb = checker.evaluate(image, idea)
+        log.info("  Variante %d (%.0f s): %s | Punkte %.1f | %s", v + 1, time.time() - started,
+                 "OK" if ok else "abgelehnt", score, details)
+        if ok and (best is None or score > best[1]):
+            best = (image, score, emb)
+        elif not ok:
+            image.convert("RGB").save(REJECTED / f"{today}_{int(time.time())}_v{v + 1}.jpg", quality=85)
+            state["rejected_total"] = state.get("rejected_total", 0) + 1
+
+    cleanup_rejected()
+    if best is None:
+        log.info("  Keine Variante gut genug – Motiv verworfen")
+        save_state(state)
+        return True
+
+    image, score, emb = best
     name = f"{today}_{int(time.time())}.jpg"
     path = PENDING / name
     image.convert("RGB").save(path, "JPEG", quality=95)
     write_metadata(path, idea)
     append_csv(path, idea)
-    log.info("Bild fertig in %.0f s: %s (%dx%d)", time.time() - started, name, *image.size)
+    checker.remember(emb)
+    log.info("  Behalten: %s (Punkte %.1f, %dx%d)", name, score, *image.size)
 
     state["made_today"] += 1
     state["recent_titles"] = (state["recent_titles"] + [idea["title"]])[-100:]
@@ -316,7 +402,9 @@ def one_round(cfg, state):
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         stream=sys.stdout)
-    for d in (PENDING, UPLOADED):
+    for noisy in ("httpx", "huggingface_hub", "urllib3", "paramiko"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+    for d in (PENDING, UPLOADED, REJECTED, MODELS):
         d.mkdir(parents=True, exist_ok=True)
 
     cfg = load_config()
