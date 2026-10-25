@@ -16,8 +16,7 @@ function render(data){const m=data.monitoring,f=data.fees??{};
   $('setup-message').textContent=data.automation?.claimingEnabled?'Auto-claim is armed. Holder payouts and buybacks are still in setup.':'Claims and automatic payouts are not active yet.';
   $('holder-count').textContent=number(m?.holders);$('checked-count').textContent=number(m?.scannedWallets);$('checked-total').textContent=` / ${number(m?.holders)}`;
   if(m)$('history-detail').textContent=`${number(m.limitedHistoryWallets)} observed wallets have limited history.${m.scanInterrupted?' The latest pass was interrupted.':''}`;
-  // Only funds already in the creator vaults belong in the claimable balance.
-  // Pending curve/pool fees are a separate source, shown in Details.
+  // Only the observed creator fee vault balance is displayed or counted toward the threshold.
   const raw=f.creatorVaultsClaimableRaw,priceFresh=Number.isFinite(Date.parse(f.priceCheckedAt))&&Date.now()-Date.parse(f.priceCheckedAt)<75*60000;
   const hasBalance=f.status==='observed'&&f.vaultsStatus==='observed'&&!f.stale&&units(raw)!==null;
   const total=hasBalance&&priceFresh&&Number.isFinite(f.creatorVaultsClaimableUsd)&&f.creatorVaultsClaimableUsd>=0?f.creatorVaultsClaimableUsd:null;
@@ -26,8 +25,7 @@ function render(data){const m=data.monitoring,f=data.fees??{};
   else if(hasBalance){$('unclaimed-balance').textContent='—';$('native-balance').textContent=units(raw)+' SOL · USD quote unavailable';}
   else{$('unclaimed-balance').textContent='—';$('native-balance').textContent=f.vaultsStatus==='unavailable'?'Fee vault observation unavailable':'Checking fee vaults';}
   $('vault-amount').textContent=rawAmount(f.creatorVaultsClaimableRaw,priceFresh?f.creatorVaultsClaimableUsd:null);
-  $('accrued-amount').textContent=rawAmount(f.tokenFeesAwaitingSweepRaw,priceFresh?f.tokenFeesAwaitingSweepUsd:null);
-  $('fee-note').textContent='Creator vault balance only. Pending pool fees are shown separately in Details. USD values are estimates.';
+  $('fee-note').textContent='USD estimate based on the latest claimable creator fee balance.';
   const threshold=data.plan?.claimThresholdUsd;$('threshold-label').textContent=Number.isFinite(threshold)?usd(threshold):'Not set';
   const hasProgress=total!==null&&Number.isFinite(threshold)&&threshold>0;
   $('claim-progress').classList.toggle('unknown',!hasProgress);
