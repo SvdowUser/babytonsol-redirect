@@ -1,61 +1,40 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f8f7f4">
-  <meta name="description" content="BabyT claims and buybacks, at a glance. Track the claimable SOL balance, the next claim threshold and confirmed activity.">
-  <title>BabyT · Claims &amp; Buybacks</title>
-  <link rel="canonical" href="https://babytonsol.com/">
-  <link rel="icon" href="./assets/babyt-logo.jpg">
-  <link rel="stylesheet" href="./style.b80cde9aa145.css">
-  <script src="./app.66887bc019e6.js" defer></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f8f7f4"><meta name="description" content="BabyT market activity, SOL fee claims and buybacks in one simple dashboard."><title>BabyT · Claims &amp; Buybacks</title><link rel="canonical" href="https://babytonsol.com/"><link rel="icon" href="./assets/babyt-logo.jpg"><link rel="stylesheet" href="./style.668e96208b4a.css"><script src="./assets/vendor/lightweight-charts-5.2.1.js" defer></script><script src="./app.6d9e280ba2b2.js" defer></script><script src="./market.215cf25c94c1.js" defer></script>
 </head>
 <body>
-<a class="skip" href="#main">Skip to tracker</a>
-<div class="page">
-  <header class="site-header">
-    <a href="#main" class="brand" aria-label="BabyT home"><img src="./assets/babyt-logo.jpg" width="42" height="42" alt=""><span>BabyT<span class="brand-sub">on Solana</span></span></a>
-    <a class="chart-link" href="https://dexscreener.com/solana/5furhzjfb6rbeskctzecyt1t9ueidvcz53yfbwc3xn8n" target="_blank" rel="noopener noreferrer">View chart <svg viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10" stroke="currentColor" stroke-width="1.5"/></svg></a>
-  </header>
-  <main id="main">
-    <div class="intro"><div><p class="eyebrow">THE BABYT TRACKER</p><h1>Claims &amp; buybacks.</h1></div><span class="setup-badge" data-state="loading">Checking status</span></div>
-    <section class="balance" aria-labelledby="fee-title">
-      <div class="balance-main">
-        <h2 id="fee-title">Available to claim</h2>
-        <div class="amount" id="unclaimed-balance">—</div>
-        <p class="native-amount" id="native-balance">Checking balance…</p>
-      </div>
-      <div class="claim-target">
-        <div class="threshold-row"><span>Auto-claim at</span><strong id="threshold-label">— SOL</strong></div>
-        <div class="progress unknown" id="claim-progress" role="progressbar" aria-label="Progress toward claim threshold" aria-valuemin="0" aria-valuetext="Balance not available"><span id="claim-progress-fill"></span></div>
-        <p class="progress-caption" id="claim-progress-caption">Waiting for the latest balance</p>
-        <p class="schedule"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.3"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Checked every 30 minutes</p>
-      </div>
+<a class="skip" href="#main">Skip to dashboard</a>
+<header class="topbar"><a class="brand" href="#main"><img src="./assets/babyt-logo.jpg" width="27" height="27" alt="">BabyT</a><span class="breadcrumb"><span>/</span> Tracker</span><span class="setup-badge" data-state="loading">Checking status</span></header>
+<main class="dashboard" id="main">
+  <section class="token-card card" aria-labelledby="token-name">
+    <div class="token-heading"><div class="token-identity"><img class="token-avatar" src="./assets/babyt-logo.jpg" width="54" height="54" alt="BabyT"><div><div class="token-title"><h1 id="token-name">Baby Tung Tung Tung Sahur</h1><span>$BabyT</span></div><div class="token-address"><a href="https://solscan.io/token/Bo3sVJY52FNDBxT3uDN92FcL277fXriy1Un7dXuQpump" target="_blank" rel="noopener noreferrer" title="View the BabyT token on Solscan">Bo3sVJ…Qpump</a><button type="button" id="copy-mint" aria-label="Copy BabyT token address"><img src="./assets/vendor/copy.svg" width="13" height="13" alt=""><span id="copy-label" class="sr-only">Copy</span></button><span id="copy-status" class="sr-only" role="status"></span></div></div></div><nav class="token-links" aria-label="BabyT links"><a href="https://x.com/BabyTonSol" target="_blank" rel="noopener noreferrer">X</a><a href="https://dexscreener.com/solana/5fuRHZJfb6rBesKCTZECYT1t9uEidvCZ53YFbWc3xn8N" target="_blank" rel="noopener noreferrer">Dexscreener</a><a href="https://solscan.io/token/Bo3sVJY52FNDBxT3uDN92FcL277fXriy1Un7dXuQpump" target="_blank" rel="noopener noreferrer">Solscan</a></nav></div>
+    <dl class="market-stats"><div><dt>Market cap</dt><dd id="market-cap">—</dd></div><div><dt>Price</dt><dd id="market-price">—</dd></div><div><dt>24h volume</dt><dd id="market-volume">—</dd></div><div><dt>24h</dt><dd id="market-change">—</dd></div><div><dt>Holders</dt><dd id="holder-count">—</dd></div></dl>
+  </section>
+  <div class="main-grid">
+    <section class="claim-card card" aria-labelledby="fee-title">
+      <div class="card-heading"><h2 id="fee-title">Fee claims</h2><span class="live-state" id="connection-status">Connecting…</span></div>
+      <div class="claim-balance"><span class="small-label">Available to claim</span><div class="amount" id="unclaimed-balance">—</div><p id="native-balance">Checking balance…</p></div>
+      <div class="claim-facts"><div><span>Auto-claim at</span><strong id="threshold-label">— SOL</strong></div><div><span>Checks every</span><strong>30 minutes</strong></div></div>
+      <div class="claim-progress-wrap"><div class="progress unknown" id="claim-progress" role="progressbar" aria-label="Progress toward claim threshold" aria-valuemin="0" aria-valuetext="Balance not available"><span id="claim-progress-fill"></span></div><p id="claim-progress-caption">Waiting for the latest balance</p></div>
+      <div class="claim-space"><img src="./assets/vendor/clock.svg" width="16" height="16" alt=""><p id="claim-status">Waiting for the latest auto-claim status.</p></div>
+      <div class="claim-footer"><span id="last-checked">Waiting for a report</span><button type="button" id="refresh" aria-label="Refresh tracker"><img src="./assets/vendor/refresh.svg" width="15" height="15" alt="">Refresh</button></div>
     </section>
-    <div class="report-bar"><span class="live-state" id="connection-status">Connecting…</span><div class="report-actions"><span id="last-checked">Waiting for a report</span><button type="button" id="refresh" aria-label="Refresh tracker" title="Refresh tracker"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" aria-hidden="true"><path d="M16 8a6 6 0 1 0-.5 5M16 4v4h-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>
-    <section class="totals" aria-label="Recorded totals">
-      <div class="total"><h2>Total claimed</h2><p><strong id="total-claimed">—</strong> <span>SOL</span></p></div>
-      <div class="total"><h2>Used for buybacks</h2><p><strong id="total-buybacks">—</strong> <span>SOL</span></p></div>
+    <section class="chart-card card" aria-labelledby="chart-heading">
+      <div class="chart-heading"><div><h2 id="chart-heading">BabyT market</h2><strong id="chart-value">—</strong><p><span id="chart-change">—</span><span id="chart-context">Market cap estimate</span></p></div><div class="periods" role="group" aria-label="Chart period"><button type="button" data-range="1h" aria-pressed="false">1H</button><button type="button" data-range="6h" aria-pressed="false">6H</button><button type="button" data-range="1d" aria-pressed="true">1D</button><button type="button" data-range="7d" aria-pressed="false">7D</button></div></div>
+      <div class="chart-stage"><div id="market-chart" aria-label="BabyT historical market chart"></div><div class="chart-message" id="chart-message" role="status">Loading BabyT chart…</div></div>
+      <div class="chart-footer"><span id="market-status">Loading market data</span><a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Charts by TradingView</a></div>
     </section>
-    <section class="activity" aria-labelledby="activity-title">
-      <div class="activity-top"><h2 id="activity-title">Recent activity</h2><div class="tabs" role="tablist" aria-label="Activity type"><button id="tab-buybacks" role="tab" aria-controls="activity-panel" aria-selected="true" data-tab="buybacks">Buybacks</button><button id="tab-claims" role="tab" aria-controls="activity-panel" aria-selected="false" data-tab="claims" tabindex="-1">Claims</button></div></div>
-      <div id="activity-panel" role="tabpanel" aria-labelledby="tab-buybacks" tabindex="0">
-        <div id="activity-empty-state" class="activity-empty"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" aria-hidden="true"><path d="M5 16.5 10 11.5l3.5 3.5L20 8.5M14.5 8.5H20V14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 4v16h16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><p id="empty-description">Loading activity…</p><small id="empty-hint">Confirmed transactions appear here.</small></div>
-        <div id="activity-list" hidden></div>
-      </div>
+  </div>
+  <div class="bottom-grid">
+    <section class="rewards-card card" aria-labelledby="rewards-title"><div class="card-heading"><h2 id="rewards-title">Holder rewards</h2><span class="subtle">Paid in SOL</span></div>
+      <div class="reward-asset"><img src="./assets/vendor/coins.svg" width="28" height="28" alt=""><div><span class="small-label">Minimum holding</span><p><strong id="minimum-holding">100,000</strong> BabyT</p></div><span class="small-tag">SOL rewards</span></div>
+      <dl class="reward-stats"><div><dt>Total claimed</dt><dd><span id="total-claimed">—</span> <span class="unit">SOL</span></dd></div><div><dt>Used for buybacks</dt><dd><span id="total-buybacks">—</span> <span class="unit">SOL</span></dd></div><div><dt>Max. per round</dt><dd id="round-cap">1%</dd></div><div><dt>Wallet histories checked</dt><dd><span id="checked-count">—</span><span id="checked-total"> / —</span></dd></div></dl>
+      <p id="holder-rules" class="reward-rule">Hold at least 100,000 BabyT. Rewards are paid in SOL, with a 1% limit per holder or known linked wallet group in each round.</p>
+      <details class="details"><summary>Fee use &amp; details<img src="./assets/vendor/chevron-down.svg" width="16" height="16" alt=""></summary><div class="detail-content"><div class="fee-use"><span><strong id="holders-split">60%</strong> Holders</span><span><strong id="buybacks-split">20%</strong> Buybacks</span><span><strong id="creator-split">20%</strong> Creator</span></div><p>After network costs. Only confirmed claims fund the split; deposits and other tokens are excluded.</p><p>Unchecked or flagged wallets are held for review. Capped and held rewards stay reserved.</p><p id="history-detail">Wallet checks are loading.</p><p>History checks cannot prove ownership or detect every bundle.</p><div class="source-row"><span>Exact claimable balance</span><strong id="vault-amount">—</strong></div><p id="fee-note">All claim and reward amounts are shown in SOL. The claim threshold follows the latest exchange rate.</p><p>Unswept pool fees and network rent are excluded. Totals cover confirmed activity recorded by this tracker.</p><div class="sources"><a id="pump-vault-link" hidden target="_blank" rel="noopener noreferrer">Pump vault</a><a id="amm-vault-link" hidden target="_blank" rel="noopener noreferrer">PumpSwap vault</a></div><p id="setup-message">Checking automation status.</p><p id="creator-wallet-status">Checking the creator fee wallet.</p><p>Buybacks do not guarantee a price or market cap.</p><p id="market-explanation">Market figures are quoted in USD. Chart estimates use historical prices and the latest supply implied by market data.</p></div></details>
     </section>
-    <details class="details">
-      <summary>How it works <svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true"><path d="M5 7.5 10 12.5l5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-      <div class="detail-content">
-        <section class="detail-block"><h3>Where fees go</h3><dl class="fee-split"><div><dt>Holder rewards</dt><dd id="holders-split">60%</dd></div><div><dt>Buybacks</dt><dd id="buybacks-split">20%</dd></div><div><dt>Creator</dt><dd id="creator-split">20%</dd></div></dl><p>After network costs. Only confirmed claims fund the split; deposits and other tokens are excluded.</p><p>Buybacks do not guarantee a price or market cap.</p></section>
-        <section class="detail-block"><h3>Holder rewards</h3><p id="holder-rules">Hold at least 100,000 BabyT. SOL rewards have a 1% limit per holder or known linked wallet group in each round.</p><p>Unchecked or flagged wallets are held for review. Capped and held rewards stay reserved.</p><div class="check-stats"><div><span>Holders</span><strong id="holder-count">—</strong></div><div><span>Histories observed</span><strong><span id="checked-count">—</span><small id="checked-total"> / —</small></strong></div></div><p id="history-detail">Wallet checks are loading.</p><p>History checks cannot prove ownership or detect every bundle.</p></section>
-        <section class="detail-block"><h3>About the numbers</h3><div class="source-row"><span>Claimable balance</span><strong id="vault-amount">—</strong></div><p id="fee-note">All amounts are shown in SOL. The claim threshold follows the latest exchange rate.</p><p>Unswept pool fees and network rent are excluded. Totals cover confirmed activity recorded by this tracker.</p><div class="sources"><a id="pump-vault-link" hidden target="_blank" rel="noopener noreferrer">Pump vault ↗</a><a id="amm-vault-link" hidden target="_blank" rel="noopener noreferrer">PumpSwap vault ↗</a></div><p id="setup-message">Checking automation status.</p><p id="claim-status">Waiting for the latest auto-claim status.</p><p id="creator-wallet-status">Checking the creator fee wallet.</p></section>
-      </div>
-    </details>
-    <div class="token-row"><div><span class="token-label">Token address</span><a class="mint" href="https://solscan.io/token/Bo3sVJY52FNDBxT3uDN92FcL277fXriy1Un7dXuQpump" target="_blank" rel="noopener noreferrer" title="View BabyT on Solscan">Bo3sVJ…Qpump <span aria-hidden="true">↗</span></a></div><button type="button" id="copy-mint" aria-label="Copy BabyT token address"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 13.5H3.5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1V4" stroke="currentColor" stroke-width="1.3"/></svg><span id="copy-label">Copy</span></button><span id="copy-status" class="sr-only" role="status"></span></div>
-  </main>
+    <section class="activity-card card" aria-labelledby="activity-title"><div class="activity-top"><h2 id="activity-title">Recent activity</h2><div class="tabs" role="tablist" aria-label="Activity type"><button id="tab-buybacks" role="tab" aria-controls="activity-panel" aria-selected="true" data-tab="buybacks">Buybacks</button><button id="tab-claims" role="tab" aria-controls="activity-panel" aria-selected="false" data-tab="claims" tabindex="-1">Claims</button></div></div><div id="activity-panel" role="tabpanel" aria-labelledby="tab-buybacks" tabindex="0"><div id="activity-empty-state" class="activity-empty"><img src="./assets/vendor/chart-line.svg" width="28" height="28" alt=""><p id="empty-description">Loading activity…</p><small id="empty-hint">Confirmed transactions appear here.</small></div><div id="activity-list" hidden></div></div></section>
+  </div>
   <footer><span>BabyT on Solana</span><span>No wallet connection required.</span></footer>
-</div>
-</body>
-</html>
+</main>
+</body></html>

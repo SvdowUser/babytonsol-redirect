@@ -30,6 +30,7 @@ function render(data){const m=data.monitoring,f=data.fees??{};
   const policy=data.plan?.holderRewardPolicy;
   if(policy&&typeof policy.minHoldingTokens==='string'&&/^\d+$/.test(policy.minHoldingTokens)&&Number.isSafeInteger(policy.maxGroupRewardBps)){
     const minimum=new Intl.NumberFormat('en-US').format(BigInt(policy.minHoldingTokens));
+    $('minimum-holding').textContent=minimum;$('round-cap').textContent=policy.maxGroupRewardBps/100+'%';
     $('holder-rules').textContent=`Hold at least ${minimum} BabyT. Rewards are paid in SOL, with a ${policy.maxGroupRewardBps/100}% limit per holder or known linked wallet group in each rewards round.`;
   }
   $('creator-wallet-status').textContent=data.setup?.creatorWallet?.keyVerified?'Creator fee wallet verified.':'Creator fee wallet setup is pending.';
@@ -57,7 +58,7 @@ function render(data){const m=data.monitoring,f=data.fees??{};
     $('native-balance').textContent=f.stale?'Waiting for a fresh balance':'Balance unavailable';
   }
   $('vault-amount').textContent=hasBalance?units(raw)+' SOL':'Not currently available';
-  $('fee-note').textContent='All amounts are shown in SOL. The claim threshold is converted at the latest exchange rate and may change with the SOL price.';
+  $('fee-note').textContent='Claim and reward amounts are shown in SOL. The claim threshold is converted at the latest exchange rate and may change with the SOL price.';
   $('threshold-label').textContent=thresholdSol!==null?quoteSol(thresholdSol):'— SOL';
   $('threshold-label').title=thresholdSol!==null?thresholdSol.toFixed(9)+' SOL at the latest exchange rate':'';
   const hasProgress=native!==null&&Number.isFinite(native)&&thresholdSol!==null;
@@ -84,7 +85,7 @@ async function refresh(manual=false){if(fetching||manual&&Date.now()<cooldownUnt
   catch{status(latest?'Last report':'Offline',true);const badge=document.querySelector('.setup-badge');if(badge){badge.textContent='Status unavailable';badge.dataset.state='warning';}$('setup-message').textContent='Live reports are unavailable. Automatic activity cannot be verified.';if(!latest){$('last-checked').textContent='No current report';$('empty-description').textContent='Activity unavailable';$('empty-hint').textContent='Try refreshing in a moment.';}}
   finally{fetching=false;cooldownUntil=Date.now()+5000;setTimeout(()=>{$('refresh').disabled=false;},5000);}}
 $('refresh').addEventListener('click',()=>refresh(true));
-$('copy-mint').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(MINT);$('copy-status').className='sr-only';$('copy-status').textContent='Address copied.';$('copy-label').textContent='Copied';setTimeout(()=>{$('copy-label').textContent='Copy';},2500);}catch{$('copy-status').textContent=MINT;$('copy-status').className='copy-fallback';$('copy-label').textContent='Address shown';}});
+$('copy-mint').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(MINT);$('copy-status').className='sr-only';$('copy-status').textContent='Address copied.';$('copy-label').textContent='Copied';$('copy-mint').querySelector('img').src='./assets/vendor/check.svg';setTimeout(()=>{$('copy-label').textContent='Copy';$('copy-mint').querySelector('img').src='./assets/vendor/copy.svg';},2500);}catch{$('copy-status').textContent=MINT;$('copy-status').className='copy-fallback';$('copy-label').textContent='Address shown';}});
 let activeTab='buybacks';
 const empty={buybacks:'No buybacks yet',claims:'No claims yet'},tabs=[...document.querySelectorAll('[role=tab]')];
 function selectTab(tab){activeTab=tab.dataset.tab;tabs.forEach(item=>{const active=item===tab;item.setAttribute('aria-selected',String(active));item.tabIndex=active?0:-1;});$('activity-panel').setAttribute('aria-labelledby',tab.id);renderActivity();}
