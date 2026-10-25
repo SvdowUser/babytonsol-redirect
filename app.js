@@ -9,26 +9,29 @@ function units(raw,decimals=9){if(typeof raw!=='string'||!/^\d+$/.test(raw)||!Nu
 function status(text,warning=false){$('connection-status').textContent=text;$('connection-status').classList.toggle('warning',warning);}
 function rawAmount(raw,approx){const native=units(raw);return native===null?'—':`${native} SOL${Number.isFinite(approx)?' · ≈ '+usd(approx):''}`;}
 function render(data){const m=data.monitoring,f=data.fees??{};
-  status(m&&!m.stale?'Live':m?'Old report':'Waiting',!m||m.stale);
-  $('last-checked').textContent=m?`Updated ${ago(m.checkedAt)}`:'Waiting for the first report';
-  $('last-checked').title=m?new Date(m.checkedAt).toLocaleString():'';
+  const feeObserved=f.status==='observed'&&f.vaultsStatus==='observed';
+  status(feeObserved&&!f.stale?'30 min updates':f.stale?'Old report':'Unavailable',!feeObserved||f.stale);
+  $('last-checked').textContent=f.checkedAt?`Fees checked ${ago(f.checkedAt)}`:'Waiting for the first fee report';
+  $('last-checked').title=f.checkedAt?new Date(f.checkedAt).toLocaleString():'';
   $('setup-message').textContent=data.automation?.claimingEnabled?'Auto-claim is armed. Holder payouts and buybacks are still in setup.':'Claims and automatic payouts are not active yet.';
   $('holder-count').textContent=number(m?.holders);$('checked-count').textContent=number(m?.scannedWallets);$('checked-total').textContent=` / ${number(m?.holders)}`;
   if(m)$('history-detail').textContent=`${number(m.limitedHistoryWallets)} observed wallets have limited history.${m.scanInterrupted?' The latest pass was interrupted.':''}`;
-  const raw=f.creatorScopedUnclaimedRaw,priceFresh=Number.isFinite(Date.parse(f.priceCheckedAt))&&Date.now()-Date.parse(f.priceCheckedAt)<75*60000;
+  // Only funds already in the creator vaults belong in the claimable balance.
+  // Pending curve/pool fees are a separate source, shown in Details.
+  const raw=f.creatorVaultsClaimableRaw,priceFresh=Number.isFinite(Date.parse(f.priceCheckedAt))&&Date.now()-Date.parse(f.priceCheckedAt)<75*60000;
   const hasBalance=f.status==='observed'&&f.vaultsStatus==='observed'&&!f.stale&&units(raw)!==null;
-  const total=hasBalance&&priceFresh&&Number.isFinite(f.creatorScopedUnclaimedUsd)&&f.creatorScopedUnclaimedUsd>=0?f.creatorScopedUnclaimedUsd:null;
+  const total=hasBalance&&priceFresh&&Number.isFinite(f.creatorVaultsClaimableUsd)&&f.creatorVaultsClaimableUsd>=0?f.creatorVaultsClaimableUsd:null;
   $('unclaimed-balance').replaceChildren();
   if(total!==null){$('unclaimed-balance').append(Object.assign(document.createElement('span'),{className:'approx',textContent:'≈'}),document.createTextNode(usd(total)));$('native-balance').textContent=units(raw)+' SOL';}
   else if(hasBalance){$('unclaimed-balance').textContent='—';$('native-balance').textContent=units(raw)+' SOL · USD quote unavailable';}
   else{$('unclaimed-balance').textContent='—';$('native-balance').textContent=f.vaultsStatus==='unavailable'?'Fee vault observation unavailable':'Checking fee vaults';}
   $('vault-amount').textContent=rawAmount(f.creatorVaultsClaimableRaw,priceFresh?f.creatorVaultsClaimableUsd:null);
   $('accrued-amount').textContent=rawAmount(f.tokenFeesAwaitingSweepRaw,priceFresh?f.tokenFeesAwaitingSweepUsd:null);
-  $('fee-note').textContent='USD values are estimates. Fee vaults can include earnings from other tokens.';
+  $('fee-note').textContent='Creator vault balance only. Pending pool fees are shown separately in Details. USD values are estimates.';
   const threshold=data.plan?.claimThresholdUsd;$('threshold-label').textContent=Number.isFinite(threshold)?usd(threshold):'Not set';
   const hasProgress=total!==null&&Number.isFinite(threshold)&&threshold>0;
   $('claim-progress').classList.toggle('unknown',!hasProgress);
-  if(hasProgress){$('claim-progress-fill').style.width=Math.min(100,total/threshold*100)+'%';$('claim-progress').setAttribute('aria-valuenow',String(total));$('claim-progress').setAttribute('aria-valuemax',String(threshold));$('claim-progress').setAttribute('aria-valuetext',`Approximately ${usd(total)} of ${usd(threshold)} in observed fee sources`);$('claim-progress-caption').textContent=total>=threshold?'Threshold reached · claiming is still in setup':`${usd(Math.max(0,threshold-total))} to the proposed threshold`;}
+  if(hasProgress){$('claim-progress-fill').style.width=Math.min(100,total/threshold*100)+'%';$('claim-progress').setAttribute('aria-valuenow',String(total));$('claim-progress').setAttribute('aria-valuemax',String(threshold));$('claim-progress').setAttribute('aria-valuetext',`Approximately ${usd(total)} of ${usd(threshold)} in creator fee vaults`);$('claim-progress-caption').textContent=total>=threshold?'Threshold reached · claiming is still in setup':`${usd(Math.max(0,threshold-total))} to the proposed threshold`;}
   else{$('claim-progress-fill').style.width='0';$('claim-progress').removeAttribute('aria-valuenow');$('claim-progress').removeAttribute('aria-valuemax');$('claim-progress').setAttribute('aria-valuetext','Current USD balance unavailable');$('claim-progress-caption').textContent='Progress available with a current USD balance';}
   for(const [id,address]of[['pump-vault-link',f.pumpCreatorVaultAddress],['amm-vault-link',f.ammCreatorVaultAddress]]){const valid=typeof address==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);$(id).hidden=!valid;if(valid)$(id).href='https://solscan.io/account/'+address;}
   const claim=data.claiming;const labels={disabled:'Auto-claim is not activated.',below_threshold:'Auto-claim is armed and waiting for the threshold.',signer_configuration_needed:'Auto-claim is waiting for its separate gas wallet.',submitted:'A fee claim was submitted and is awaiting confirmation.',pending_confirmation:'A fee claim is awaiting confirmation.',confirmed:'The latest fee claim is confirmed.',gas_funding_needed:'The gas wallet needs SOL for network costs.',confirmed_receipt_unavailable:'The last claim needs receipt reconciliation.'};$('claim-status').textContent=labels[claim?.status]??'Auto-claim setup is pending.';
