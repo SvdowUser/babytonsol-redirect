@@ -80,7 +80,7 @@ function renderActivity(){
   $('empty-description').textContent=daily&&(!activity||activity.coverageLimited)?'Activity summaries unavailable':{rewards:'No payouts in the last 72 hours',buybacks:'No buybacks yet',claims:'No claims in the last 72 hours'}[activeTab];
   $('empty-hint').textContent={rewards:'Confirmed SOL payments appear here.',buybacks:'Confirmed BabyT buybacks appear here.',claims:'Confirmed claims appear here.'}[activeTab];
   for(const row of rows){const item=document.createElement(daily?'div':'a');item.className='payout-row';if(!daily){item.href='https://solscan.io/tx/'+row.signature;item.target='_blank';item.rel='noopener noreferrer';}
-    const icon=Object.assign(document.createElement('img'),{src:'./assets/solana-user-eda3ddbe.png',className:'sol-icon small',alt:'',width:24,height:24});
+    const icon=Object.assign(document.createElement('img'),{src:'./assets/solana-badge-vector.svg',className:'sol-icon small',alt:'',width:24,height:24});
     const info=document.createElement('div'),amount=document.createElement('strong'),date=document.createElement('small');amount.textContent=totalAmount(row.amountRaw)+' SOL';amount.title=units(row.amountRaw)+' SOL';
     date.textContent=daily?`${number(row.count)} ${activeTab==='rewards'?'payments':'claims'} · ${new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(row.day+'T00:00:00Z'))}`:Number.isFinite(Date.parse(row.confirmedAt))?new Date(row.confirmedAt).toLocaleString():'Confirmed';info.append(amount,date);
     const value=document.createElement('span');value.className='payout-usd';value.textContent=usd(row.amountRaw)+(daily?'':' ↗');item.append(icon,info,value);list.append(item);
