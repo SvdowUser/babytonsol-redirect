@@ -2,7 +2,7 @@ const API='https://babyt-wallet-review.svdowuser.deno.net/api/dashboard';
 const MINT='Bo3sVJY52FNDBxT3uDN92FcL277fXriy1Un7dXuQpump';
 const $=id=>document.getElementById(id);
 const FEE_MAX_AGE_MS=12*60000;
-function claimable(f){return f?.status==='observed'&&f.vaultsStatus==='observed'&&!f.stale&&fresh(Date.parse(f.checkedAt),FEE_MAX_AGE_MS)&&units(f.creatorVaultsClaimableRaw)!==null;}
+function claimable(f){return f?.status==='observed'&&f.vaultsStatus==='observed'&&f.claimableCreatorFeesBasis==='vaults_and_creator_fee_sweeps'&&!f.stale&&fresh(Date.parse(f.checkedAt),FEE_MAX_AGE_MS)&&units(f.claimableCreatorFeesRaw)!==null;}
 const number=value=>Number.isSafeInteger(value)?new Intl.NumberFormat('en-US').format(value):'—';
 let latest=null,fetching=false,cooldownUntil=0,marketQuote=null,activeTab='rewards';
 function ago(timestamp){const ms=Date.now()-Date.parse(timestamp);if(!Number.isFinite(ms))return'unknown';const m=Math.max(0,Math.floor(ms/60000));return m<1?'just now':m<60?`${m} min ago`:`${Math.floor(m/60)}h ${m%60}m ago`;}
@@ -22,7 +22,7 @@ function renderValueQuotes(){
   else if(policy?.priceStatus==='fresh'&&/^\d+$/.test(policy.minimumWholeTokens??'')&&fresh(Date.parse(latest?.fees?.priceCheckedAt)))tokens=Number(policy.minimumWholeTokens);
   $('minimum-tokens').textContent=Number.isSafeInteger(tokens)?'≈ '+number(tokens)+' BabyT':'Token quote unavailable';
   $('minimum-tokens').title='Indicative token amount. The server checks the $'+min+' minimum again using a fresh price before paying.';
-  const funding=latest?.ledger?.funding??{},f=latest?.fees,raw=claimable(f)?f.creatorVaultsClaimableRaw:null;
+  const funding=latest?.ledger?.funding??{},f=latest?.fees,raw=claimable(f)?f.claimableCreatorFeesRaw:null;
   for(const [id,value]of[['total-paid-usd',funding.paidHoldersRaw],['earned-usd',funding.claimedRaw],['unclaimed-usd',raw],['owed-usd',funding.owedHoldersRaw]])$(id).textContent=usd(value);
   $('native-balance').textContent=raw!==null?usd(raw):'Waiting for a fresh balance';
   const price=solPrice();$('sol-price-caption').textContent=price===null?'Current SOL price unavailable':'1 SOL ≈ '+new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(price);
@@ -37,7 +37,7 @@ function drawSplit(split){
 }
 function render(data){
   const f=data.fees??{},auto=data.automation??{};
-  const observed=f.status==='observed'&&f.vaultsStatus==='observed',hasBalance=claimable(f),raw=f.creatorVaultsClaimableRaw;
+  const observed=f.status==='observed'&&f.vaultsStatus==='observed',hasBalance=claimable(f),raw=f.claimableCreatorFeesRaw;
   status(hasBalance?'Latest report':observed?'Report outdated':'Data unavailable',!hasBalance);
   $('last-checked').textContent=f.checkedAt?`Updated ${ago(f.checkedAt)}`:'Awaiting first report';$('last-checked').title=f.checkedAt?new Date(f.checkedAt).toLocaleString():'';
   $('holder-count').textContent=number(data.monitoring?.holders);
