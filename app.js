@@ -1,6 +1,8 @@
 const API='https://babyt-wallet-review.svdowuser.deno.net/api/dashboard';
 const MINT='Bo3sVJY52FNDBxT3uDN92FcL277fXriy1Un7dXuQpump';
 const $=id=>document.getElementById(id);
+const FEE_MAX_AGE_MS=12*60000;
+function claimable(f){return f?.status==='observed'&&f.vaultsStatus==='observed'&&!f.stale&&fresh(Date.parse(f.checkedAt),FEE_MAX_AGE_MS)&&units(f.creatorVaultsClaimableRaw)!==null;}
 const number=value=>Number.isSafeInteger(value)?new Intl.NumberFormat('en-US').format(value):'—';
 let latest=null,fetching=false,cooldownUntil=0,marketQuote=null,activeTab='rewards';
 function ago(timestamp){const ms=Date.now()-Date.parse(timestamp);if(!Number.isFinite(ms))return'unknown';const m=Math.max(0,Math.floor(ms/60000));return m<1?'just now':m<60?`${m} min ago`:`${Math.floor(m/60)}h ${m%60}m ago`;}
@@ -9,7 +11,7 @@ function totalAmount(raw){const v=units(raw);if(v===null)return'—';const [w,f=
 function amountAt(id,raw){$(id).textContent=totalAmount(raw);$(id).title=units(raw)!==null?units(raw)+' SOL':'';}
 function status(text,warning=false){$('connection-status').textContent=text;$('connection-status').classList.toggle('warning',warning);}
 function fresh(at,age=5*60000){const n=Date.now()-at;return Number.isFinite(n)&&n>=0&&n<=age;}
-function solPrice(){if(marketQuote&&fresh(marketQuote.checkedAt)&&marketQuote.solPriceUsd>0)return marketQuote.solPriceUsd;const f=latest?.fees;return fresh(Date.parse(f?.priceCheckedAt),75*60000)&&Number.isFinite(f?.quotePriceUsd)&&f.quotePriceUsd>0?f.quotePriceUsd:null;}
+function solPrice(){if(marketQuote&&fresh(marketQuote.checkedAt)&&marketQuote.solPriceUsd>0)return marketQuote.solPriceUsd;const f=latest?.fees;return fresh(Date.parse(f?.priceCheckedAt),12*60000)&&Number.isFinite(f?.quotePriceUsd)&&f.quotePriceUsd>0?f.quotePriceUsd:null;}
 function usd(raw){const p=solPrice(),v=units(raw);if(p===null||v===null)return'—';const n=Number(v)*p;return Number.isFinite(n)?'≈ '+new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(n):'—';}
 function quoteSol(v){return Number.isFinite(v)&&v>=0?'≈ '+new Intl.NumberFormat('en-US',{maximumFractionDigits:5}).format(v)+' SOL':'— SOL';}
 function renderValueQuotes(){
@@ -20,30 +22,32 @@ function renderValueQuotes(){
   else if(policy?.priceStatus==='fresh'&&/^\d+$/.test(policy.minimumWholeTokens??'')&&fresh(Date.parse(latest?.fees?.priceCheckedAt)))tokens=Number(policy.minimumWholeTokens);
   $('minimum-tokens').textContent=Number.isSafeInteger(tokens)?'≈ '+number(tokens)+' BabyT':'Token quote unavailable';
   $('minimum-tokens').title='Indicative token amount. The server checks the $'+min+' minimum again using a fresh price before paying.';
-  const value=usd(latest?.ledger?.funding?.paidHoldersRaw);
-  $('total-paid-usd').textContent=value==='—'?'USD value unavailable':value+' at current SOL price';
+  const funding=latest?.ledger?.funding??{},f=latest?.fees,raw=claimable(f)?f.creatorVaultsClaimableRaw:null;
+  for(const [id,value]of[['total-paid-usd',funding.paidHoldersRaw],['earned-usd',funding.claimedRaw],['unclaimed-usd',raw],['owed-usd',funding.owedHoldersRaw]])$(id).textContent=usd(value);
+  $('native-balance').textContent=raw!==null?usd(raw):'Waiting for a fresh balance';
+  const price=solPrice();$('sol-price-caption').textContent=price===null?'Current SOL price unavailable':'1 SOL ≈ '+new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(price);
 }
 function drawSplit(split){
   const values=[split.holders,split.buybacks,split.creator];if(!values.every(n=>Number.isInteger(n)&&n>=0)||values.reduce((a,b)=>a+b,0)!==10000)return;
   const canvas=$('split-chart'),ctx=canvas.getContext('2d');if(!ctx)return;ctx.clearRect(0,0,1100,16);
   const colors=['#496310','#91b29d','#6e6b65'];let x=0;
   values.forEach((v,i)=>{const width=v/10000*1100;ctx.fillStyle=colors[i];ctx.beginPath();ctx.roundRect(x+(i?2:0),0,Math.max(0,width-(i?2:0)-(i<2?2:0)),16,8);ctx.fill();x+=width;});
-  canvas.setAttribute('aria-label',`Allocation after costs: ${values[0]/100}% holders, ${values[1]/100}% buybacks, ${values[2]/100}% creator`);
+  canvas.setAttribute('aria-label',`Allocation after costs: ${values[0]/100}% holders, ${values[1]/100}% buybacks, ${values[2]/100}% protocol`);
   ['holders','buybacks','creator'].forEach(k=>$(k+'-split').textContent=split[k]/100+'%');
 }
 function render(data){
   const f=data.fees??{},auto=data.automation??{},badge=document.querySelector('.setup-badge');
   badge.textContent=auto.claimingEnabled&&auto.buybacksEnabled?'Automation enabled':auto.claimingEnabled?'Auto-claim enabled':'Automation paused';badge.dataset.state=auto.claimingEnabled||auto.buybacksEnabled?'enabled':'warning';
-  const observed=f.status==='observed'&&f.vaultsStatus==='observed',hasBalance=observed&&!f.stale&&units(f.creatorVaultsClaimableRaw)!==null,raw=f.creatorVaultsClaimableRaw;
-  status(observed&&!f.stale?'Latest report':f.stale?'Report outdated':'Data unavailable',!observed||f.stale);
+  const observed=f.status==='observed'&&f.vaultsStatus==='observed',hasBalance=claimable(f),raw=f.creatorVaultsClaimableRaw;
+  status(hasBalance?'Latest report':observed?'Report outdated':'Data unavailable',!hasBalance);
   $('last-checked').textContent=f.checkedAt?`Updated ${ago(f.checkedAt)}`:'Awaiting first report';$('last-checked').title=f.checkedAt?new Date(f.checkedAt).toLocaleString():'';
   $('holder-count').textContent=number(data.monitoring?.holders);
   const balance=$('unclaimed-balance');balance.replaceChildren();balance.removeAttribute('title');
-  if(hasBalance){balance.append(document.createTextNode(totalAmount(raw)),Object.assign(document.createElement('span'),{className:'amount-unit',textContent:'SOL'}));balance.title=units(raw)+' SOL';}
+  if(hasBalance){balance.append(document.createTextNode(units(raw)),Object.assign(document.createElement('span'),{className:'amount-unit',textContent:'SOL'}));balance.title=units(raw)+' SOL';}
   else balance.textContent='—';
   $('native-balance').textContent=hasBalance?'From BabyT trading fees':f.stale?'Waiting for a fresh balance':'Balance unavailable';
   amountAt('rewards-unclaimed',hasBalance?raw:null);
-  const price=fresh(Date.parse(f.priceCheckedAt),75*60000)&&Number.isFinite(f.quotePriceUsd)&&f.quotePriceUsd>0?f.quotePriceUsd:null;
+  const price=solPrice();
   const threshold=price&&Number.isFinite(data.plan?.claimThresholdUsd)&&data.plan.claimThresholdUsd>0?data.plan.claimThresholdUsd/price:null,native=hasBalance?Number(units(raw)):null;
   $('threshold-label').textContent=quoteSol(threshold);$('threshold-label').title=threshold!==null?threshold.toFixed(9)+' SOL at the latest exchange rate':'';
   const progress=native!==null&&threshold!==null&&Number.isFinite(native),el=$('claim-progress');el.classList.toggle('unknown',!progress);
@@ -77,12 +81,13 @@ function renderActivity(){
   $('empty-description').textContent=daily&&(!activity||activity.coverageLimited)?'Activity summaries unavailable':{rewards:'No payouts in the last 72 hours',buybacks:'No buybacks yet',claims:'No claims in the last 72 hours'}[activeTab];
   $('empty-hint').textContent={rewards:'Confirmed SOL payments appear here.',buybacks:'Confirmed BabyT buybacks appear here.',claims:'Confirmed claims appear here.'}[activeTab];
   for(const row of rows){const item=document.createElement(daily?'div':'a');item.className='payout-row';if(!daily){item.href='https://solscan.io/tx/'+row.signature;item.target='_blank';item.rel='noopener noreferrer';}
-    const icon=Object.assign(document.createElement('img'),{src:'./assets/vendor/solana-logomark.svg',className:'sol-icon small',alt:'',width:30,height:30});
+    const icon=Object.assign(document.createElement('img'),{src:'./assets/solana-user.png',className:'sol-icon small',alt:'',width:24,height:24});
     const info=document.createElement('div'),amount=document.createElement('strong'),date=document.createElement('small');amount.textContent=totalAmount(row.amountRaw)+' SOL';amount.title=units(row.amountRaw)+' SOL';
     date.textContent=daily?`${number(row.count)} ${activeTab==='rewards'?'payments':'claims'} · ${new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(row.day+'T00:00:00Z'))}`:Number.isFinite(Date.parse(row.confirmedAt))?new Date(row.confirmedAt).toLocaleString():'Confirmed';info.append(amount,date);
     const value=document.createElement('span');value.className='payout-usd';value.textContent=usd(row.amountRaw)+(daily?'':' ↗');item.append(icon,info,value);list.append(item);
   }
 }
 tabs.forEach((tab,index)=>{tab.addEventListener('click',()=>selectTab(tab));tab.addEventListener('keydown',e=>{let n;if(e.key==='ArrowRight')n=(index+1)%tabs.length;else if(e.key==='ArrowLeft')n=(index+tabs.length-1)%tabs.length;else if(e.key==='Home')n=0;else if(e.key==='End')n=tabs.length-1;else return;e.preventDefault();selectTab(tabs[n]);tabs[n].focus();});});
-window.addEventListener('babyt-market-quote',event=>{const q=event.detail;if(!q||!Number.isFinite(q.tokenPriceUsd)||q.tokenPriceUsd<=0||!fresh(q.checkedAt))return;marketQuote=q;renderValueQuotes();renderActivity();});
-drawSplit({holders:6250,buybacks:2000,creator:1750});refresh();setInterval(()=>{if(document.visibilityState==='visible'){renderValueQuotes();renderActivity();}},60000);setInterval(()=>{if(document.visibilityState==='visible')refresh();},60000*5);
+window.addEventListener('babyt-market-quote',event=>{const q=event.detail;if(!q||!Number.isFinite(q.tokenPriceUsd)||q.tokenPriceUsd<=0||!fresh(q.checkedAt))return;marketQuote=q;if(latest)render(latest);else renderValueQuotes();renderActivity();});
+drawSplit({holders:6250,buybacks:2000,creator:1750});refresh();setInterval(()=>{if(document.visibilityState==='visible'){if(latest)render(latest);else renderValueQuotes();renderActivity();}},30000);setInterval(()=>{if(document.visibilityState==='visible')refresh();},60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
