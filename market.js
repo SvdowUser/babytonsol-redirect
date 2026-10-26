@@ -50,7 +50,7 @@
     if(chart)return;
     const lib=window.LightweightCharts;if(!lib)throw new Error('Chart unavailable');
     chart=lib.createChart($('market-chart'),{
-      autoSize:true,layout:{background:{type:lib.ColorType.Solid,color:'#ffffff'},textColor:'#6e7566',fontSize:10,fontFamily:'Arial, Helvetica, sans-serif',attributionLogo:true},
+      autoSize:true,layout:{background:{type:lib.ColorType.Solid,color:'#ffffff'},textColor:'#6e7566',fontSize:10,fontFamily:'Arial, Helvetica, sans-serif',attributionLogo:false},
       grid:{vertLines:{visible:false},horzLines:{color:'#edece5',style:lib.LineStyle.Dotted}},
       rightPriceScale:{borderVisible:false,scaleMargins:{top:.08,bottom:.08}},
       timeScale:{borderVisible:false,timeVisible:true,secondsVisible:false,rightOffset:1,fixLeftEdge:true},
