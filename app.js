@@ -36,8 +36,7 @@ function drawSplit(split){
   ['holders','buybacks','creator'].forEach(k=>$(k+'-split').textContent=split[k]/100+'%');
 }
 function render(data){
-  const f=data.fees??{},auto=data.automation??{},badge=document.querySelector('.setup-badge');
-  badge.textContent=auto.claimingEnabled&&auto.buybacksEnabled?'Automation enabled':auto.claimingEnabled?'Auto-claim enabled':'Automation paused';badge.dataset.state=auto.claimingEnabled||auto.buybacksEnabled?'enabled':'warning';
+  const f=data.fees??{},auto=data.automation??{};
   const observed=f.status==='observed'&&f.vaultsStatus==='observed',hasBalance=claimable(f),raw=f.creatorVaultsClaimableRaw;
   status(hasBalance?'Latest report':observed?'Report outdated':'Data unavailable',!hasBalance);
   $('last-checked').textContent=f.checkedAt?`Updated ${ago(f.checkedAt)}`:'Awaiting first report';$('last-checked').title=f.checkedAt?new Date(f.checkedAt).toLocaleString():'';
@@ -64,7 +63,7 @@ function render(data){
 }
 async function refresh(manual=false){if(fetching||manual&&Date.now()<cooldownUntil)return;fetching=true;$('refresh').disabled=true;
   try{const response=await fetch(API,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Unavailable');const data=await response.json();if(data.schemaVersion!==1||data.mint!==MINT||!['read_only','auto_claim'].includes(data.mode))throw Error('Unexpected report');latest=data;render(data);renderActivity();}
-  catch{status(latest?'Last report':'Offline',true);const badge=document.querySelector('.setup-badge');badge.textContent='Status unavailable';badge.dataset.state='warning';if(!latest){$('last-checked').textContent='No current report';$('empty-description').textContent='Activity unavailable';$('empty-hint').textContent='Try refreshing in a moment.';}}
+  catch{status(latest?'Last report':'Offline',true);if(!latest){$('last-checked').textContent='No current report';$('empty-description').textContent='Activity unavailable';$('empty-hint').textContent='Try refreshing in a moment.';}}
   finally{fetching=false;cooldownUntil=Date.now()+5000;setTimeout(()=>{$('refresh').disabled=false;},5000);}}
 $('refresh').addEventListener('click',()=>refresh(true));
 $('copy-mint').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(MINT);$('copy-status').className='sr-only';$('copy-status').textContent='Address copied.';$('copy-label').textContent='Copied';$('copy-mint').querySelector('img').src='./assets/vendor/check.svg';setTimeout(()=>{$('copy-label').textContent='Copy';$('copy-mint').querySelector('img').src='./assets/vendor/copy.svg';},2500);}catch{$('copy-status').textContent=MINT;$('copy-status').className='copy-fallback';$('copy-label').textContent='Address shown';}});
