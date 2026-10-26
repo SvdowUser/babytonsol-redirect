@@ -36,7 +36,10 @@
       const p=data.pairs?.find(p=>p.chainId==='solana'&&p.pairAddress===POOL&&p.baseToken?.address===MINT&&p.quoteToken?.address===SOL);
       if(!p||!Number.isFinite(Number(p.priceUsd))||Number(p.priceUsd)<=0)throw new Error('Wrong market');
       market={price:Number(p.priceUsd),cap:valid(p.marketCap)&&p.marketCap>0?p.marketCap:null,volume:valid(p.volume?.h24)?p.volume.h24:null,changes:p.priceChange??{},at:Date.now()};
-      metricHeader();return true;
+      metricHeader();
+      const solPrice=Number(p.priceUsd)/Number(p.priceNative);
+      window.dispatchEvent(new CustomEvent('babyt-market-quote',{detail:{tokenPriceUsd:Number(p.priceUsd),solPriceUsd:Number.isFinite(solPrice)&&solPrice>1&&solPrice<1000000?solPrice:null,checkedAt:Date.now()}}));
+      return true;
     }catch(error){
       console.warn('BabyT market data:',error.message);
       $('market-status').textContent=market?'Last market report':'Market data unavailable';
